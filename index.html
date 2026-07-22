@@ -22,32 +22,15 @@
             document.getElementById('sales-val').innerText = "₱ " + salesNum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
-        // 1. Initial fallback load from GitHub raw so it displays instantly on load
-        async function fetchInitialSales() {
-            try {
-                let response = await fetch('https://raw.githubusercontent.com/Jazkhie/pisonet-dashboard/main/sales.txt?t=' + new Date().getTime());
-                if (response.ok) {
-                    let text = await response.text();
-                    if(text.trim()) {
-                        updateSalesDisplay(text.trim());
-                    }
-                }
-            } catch (e) {
-                console.log("Initial fetch fallback error");
-            }
-        }
-        fetchInitialSales();
-
-        // 2. Connect to HiveMQ broker via Secure WebSockets with the required /mqtt path
+        // Connect via secure WebSockets to HiveMQ public broker on port 8884 with /mqtt path
         const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
-            clientId: 'web_dashboard_' + Math.random().toString(16.substring(2, 8)),
-            clean: true,
-            connectTimeout: 4000
+            clientId: 'web_dashboard_' + Math.random().toString(16).substring(2, 8),
+            clean: true
         });
 
         client.on('connect', function () {
             console.log("Connected to live broker");
-            client.subscribe('jazkhieas/shop/sales', { qos: 0 }, function (err) {
+            client.subscribe('jazkhieas/shop/sales', function (err) {
                 if (!err) {
                     console.log("Subscribed to sales updates");
                 }
@@ -59,7 +42,6 @@
                 let payloadStr = message.toString();
                 let salesVal = 0;
 
-                // Handle both raw string numbers and JSON payloads safely
                 if (payloadStr.startsWith('{')) {
                     let data = JSON.parse(payloadStr);
                     salesVal = data.sales;
@@ -73,10 +55,6 @@
             } catch (e) {
                 console.log("Error parsing incoming MQTT message");
             }
-        });
-
-        client.on('error', function (err) {
-            console.log("MQTT Connection error: ", err);
         });
     </script>
 </body>
