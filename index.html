@@ -6,6 +6,8 @@
         body { background: #0b0e14; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
         .card { background: #161b22; border: 1px solid #333; border-radius: 15px; padding: 30px; margin-top: 20px; }
     </style>
+    <!-- Include MQTT.js library for real-time instant web updates -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
 </head>
 <body>
     <h2 id="shop-title">JEC COMPUTER TRADING Dashboard</h2>
@@ -15,26 +17,29 @@
     </div>
 
     <script>
-        async function fetchSales() {
-            try {
-                // Fetch the sales.txt file directly from your raw GitHub repository branch
-                let response = await fetch('https://raw.githubusercontent.com/Jazkhie/pisonet-dashboard/main/sales.txt?t=' + new Date().getTime());
-                if (response.ok) {
-                    let salesText = await response.text();
-                    let cleanSales = salesText.trim() || "0";
-                    let salesNum = parseFloat(cleanSales) || 0;
-                    
-                    // Formats cleanly with commas and exact two decimal places without hardcoding
-                    document.getElementById('sales-val').innerText = "₱ " + salesNum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                }
-            } catch (e) {
-                console.log("Error fetching sales data");
-            }
-        }
+        // Connect to the same HiveMQ broker via WebSockets for instant push updates
+        const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
 
-        // Fetch immediately on load, then check for updates every 5 seconds
-        fetchSales();
-        setInterval(fetchSales, 5000);
+        client.on('connect', function () {
+            console.log("Connected to live broker");
+            client.subscribe('jazkhieas/shop/sales', function (err) {
+                if (!err) {
+                    console.log("Subscribed to sales updates");
+                }
+            });
+        });
+
+        client.on('message', function (topic, message) {
+            try {
+                let data = JSON.parse(message.toString());
+                let salesNum = parseFloat(data.sales) || 0;
+                
+                // Update screen instantly with zero delay
+                document.getElementById('sales-val').innerText = "₱ " + salesNum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            } catch (e) {
+                console.log("Error parsing incoming MQTT message");
+            }
+        });
     </script>
 </body>
 </html>
