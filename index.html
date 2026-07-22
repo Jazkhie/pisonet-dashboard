@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>JEC COMPUTER TRADING Dashboard</title>
+    <title>JEC COMPUTER TRADING</title>
     <style>
         body { background: #0b0e14; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
         .card { background: #161b22; border: 1px solid #333; border-radius: 15px; padding: 30px; margin-top: 20px; }
@@ -22,7 +22,10 @@
                 if (response.ok) {
                     let salesText = await response.text();
                     let cleanSales = salesText.trim() || "0";
-                    document.getElementById('sales-val').innerText = "₱ " + cleanSales + ".00";
+                    let salesNum = parseFloat(cleanSales) || 0;
+                    
+                    // Formats cleanly with commas and exact two decimal places without hardcoding
+                    document.getElementById('sales-val').innerText = "₱ " + salesNum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 }
             } catch (e) {
                 console.log("Error fetching sales data");
