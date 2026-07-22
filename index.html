@@ -1,48 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>JazkhieAS Cloud Dashboard</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+    <title>JEC COMPUTER TRADING Dashboard</title>
     <style>
         body { background: #0b0e14; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
         .card { background: #161b22; border: 1px solid #333; border-radius: 15px; padding: 30px; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <h2 id="shop-title">Loading Shop...</h2>
+    <h2 id="shop-title">JEC COMPUTER TRADING Dashboard</h2>
     <div class="card">
         <h3>Live Cloud Sales</h3>
         <span id="sales-val" style="font-size: 48px; color: #28a745; font-weight: bold;">₱ 0.00</span>
     </div>
 
     <script>
-        // Using HiveMQ WebSocket secure endpoint
-        const client = new Paho.MQTT.Client("broker.hivemq.com", 8000, "/mqtt", "web_client_" + parseInt(Math.random() * 100000));
-
-        client.onConnectionLost = function (responseObject) {
-            console.log("Connection lost: " + responseObject.errorMessage);
-        };
-
-        client.onMessageArrived = function (message) {
+        async function fetchSales() {
             try {
-                let data = JSON.parse(message.payloadString);
-                document.getElementById('shop-title').innerText = (data.shop || "JEC COMPUTER TRADING") + " Dashboard";
-                document.getElementById('sales-val').innerText = "₱ " + (data.sales || "0") + ".00";
+                // Fetch the sales.txt file directly from your raw GitHub repository branch
+                let response = await fetch('https://raw.githubusercontent.com/Jazkhie/pisonet-dashboard/main/sales.txt?t=' + new Date().getTime());
+                if (response.ok) {
+                    let salesText = await response.text();
+                    let cleanSales = salesText.trim() || "0";
+                    document.getElementById('sales-val').innerText = "₱ " + cleanSales + ".00";
+                }
             } catch (e) {
-                console.log("Parse error");
+                console.log("Error fetching sales data");
             }
-        };
+        }
 
-        client.connect({
-            onSuccess: function () {
-                console.log("Connected to MQTT Broker via WebSocket");
-                client.subscribe("jazkhieas/shop/sales");
-            },
-            onFailure: function (message) {
-                console.log("Connection failed: " + message.errorMessage);
-            },
-            useSSL: false
-        });
+        // Fetch immediately on load, then check for updates every 5 seconds
+        fetchSales();
+        setInterval(fetchSales, 5000);
     </script>
 </body>
 </html>
