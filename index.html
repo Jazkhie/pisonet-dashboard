@@ -22,8 +22,24 @@
             document.getElementById('sales-val').innerText = "₱ " + salesNum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         }
 
-        // Connect via secure WebSockets to HiveMQ public broker on port 8884 with /mqtt path
-        const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+        // 1. Initial fallback load from local file/GitHub text so it displays instantly
+        async function fetchInitialSales() {
+            try {
+                let response = await fetch('https://raw.githubusercontent.com/Jazkhie/pisonet-dashboard/main/sales.txt?t=' + new Date().getTime());
+                if (response.ok) {
+                    let text = await response.text();
+                    if(text.trim()) {
+                        updateSalesDisplay(text.trim());
+                    }
+                }
+            } catch (e) {
+                console.log("Initial fetch fallback error");
+            }
+        }
+        fetchInitialSales();
+
+        // 2. Connect using standard WebSocket port 8000 for public broker compatibility
+        const client = mqtt.connect('ws://broker.hivemq.com:8000/mqtt', {
             clientId: 'web_dashboard_' + Math.random().toString(16).substring(2, 8),
             clean: true
         });
