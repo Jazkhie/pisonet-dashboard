@@ -6,7 +6,7 @@
         body { background: #0b0e14; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
         .card { background: #161b22; border: 1px solid #333; border-radius: 15px; padding: 30px; margin-top: 20px; }
     </style>
-    <!-- Include MQTT.js library for real-time instant web updates -->
+    <!-- Include MQTT.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
 </head>
 <body>
@@ -17,12 +17,37 @@
     </div>
 
     <script>
-        // Connect to the same HiveMQ broker via WebSockets for instant push updates
-        const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+        function updateSalesDisplay(val) {
+            let salesNum = parseFloat(val) || 0;
+            document.getElementById('sales-val').innerText = "₱ " + salesNum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        // 1. Initial fallback load from GitHub raw so it displays instantly on load
+        async function fetchInitialSales() {
+            try {
+                let response = await fetch('https://raw.githubusercontent.com/Jazkhie/pisonet-dashboard/main/sales.txt?t=' + new Date().getTime());
+                if (response.ok) {
+                    let text = await response.text();
+                    if(text.trim()) {
+                        updateSalesDisplay(text.trim());
+                    }
+                }
+            } catch (e) {
+                console.log("Initial fetch fallback error");
+            }
+        }
+        fetchInitialSales();
+
+        // 2. Connect to HiveMQ broker via Secure WebSockets with the required /mqtt path
+        const client = mqtt.connect('wss://broker.hivemq.com:8884/mqtt', {
+            clientId: 'web_dashboard_' + Math.random().toString(16.substring(2, 8)),
+            clean: true,
+            connectTimeout: 4000
+        });
 
         client.on('connect', function () {
             console.log("Connected to live broker");
-            client.subscribe('jazkhieas/shop/sales', function (err) {
+            client.subscribe('jazkhieas/shop/sales', { qos: 0 }, function (err) {
                 if (!err) {
                     console.log("Subscribed to sales updates");
                 }
@@ -31,14 +56,27 @@
 
         client.on('message', function (topic, message) {
             try {
-                let data = JSON.parse(message.toString());
-                let salesNum = parseFloat(data.sales) || 0;
-                
-                // Update screen instantly with zero delay
-                document.getElementById('sales-val').innerText = "₱ " + salesNum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                let payloadStr = message.toString();
+                let salesVal = 0;
+
+                // Handle both raw string numbers and JSON payloads safely
+                if (payloadStr.startsWith('{')) {
+                    let data = JSON.parse(payloadStr);
+                    salesVal = data.sales;
+                } else {
+                    salesVal = payloadStr;
+                }
+
+                if (salesVal !== undefined && salesVal !== null) {
+                    updateSalesDisplay(salesVal);
+                }
             } catch (e) {
                 console.log("Error parsing incoming MQTT message");
             }
+        });
+
+        client.on('error', function (err) {
+            console.log("MQTT Connection error: ", err);
         });
     </script>
 </body>
